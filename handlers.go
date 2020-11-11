@@ -1,7 +1,7 @@
 package main
 
 import (
-	. "ToDoList/models"
+	. "colabnote/models"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -104,6 +104,7 @@ func (h *handlers) logIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handlers) register(w http.ResponseWriter, r *http.Request) {
+	fmt.Print(1)
 	ruser := User{}
 	token := ""
 	body, _ := ioutil.ReadAll(r.Body)
@@ -113,6 +114,7 @@ func (h *handlers) register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	fmt.Print(5)
 	rows, _ := h.db.Query("SELECT `token` FROM appusers WHERE `login` = ? ", ruser.Login)
 	exists := true
 	if rows.Next() == false {
