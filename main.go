@@ -3,12 +3,12 @@ package main
 import (
 	. "colabnote/models"
 	"database/sql"
-	_ "encoding/json"
+	"encoding/json"
 	"flag"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -25,15 +25,23 @@ var (
 )
 
 func init() {
-	flag.StringVar(&configPath, "-configpath", "conf.json", "path config file")
+	flag.StringVar(&configPath, "-configpath", "../configs/colabnote.json", "path config file")
 }
 func main() {
 	flag.Parse()
-	conf := config{}
-	jsonFile, _ := os.Open(configPath)
-	fmt.Print(jsonFile)
+	conf := Config{}
+	jsonFile, err := os.Open(configPath)
+	defer jsonFile.Close()
+	if err != nil {
+		panic(err)
+	}
+	confjson, _ := ioutil.ReadAll(jsonFile)
+	err = json.Unmarshal(confjson, &conf)
+	if err != nil {
+		panic(err)
+	}
 	rand.Seed(time.Now().UnixNano())
-	db, err := sql.Open("mysql", "ramazan:Slamdunk19984pda!@tcp(localhost:3306)/mysql?&charset=utf8&interpolateParams=true")
+	db, err := sql.Open("mysql", conf.DataSourceName)
 	if err != nil {
 		log.Printf("while connecting to db driver error happened %v", err)
 		return
@@ -53,10 +61,10 @@ func main() {
 	adminMux.HandleFunc("/api/register", handlers.register)
 	adminMux.HandleFunc("/api/usersOnline", handlers.usersOnline)
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":" + conf.Port,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		Handler:      adminMux,
 	}
-	go srv.ListenAndServe()
+	srv.ListenAndServe()
 }

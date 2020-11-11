@@ -1,5 +1,6 @@
 package models
 
-type config struct {
-	port string `json:"port,string"`
+type Config struct {
+	Port           string `json:"port"`
+	DataSourceName string `json:"data_source_name"`
 }
