@@ -1,4 +1,4 @@
-package models
+package Logic
 
 type Config struct {
 	Port           string `json:"port"`
