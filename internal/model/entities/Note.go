@@ -1,4 +1,4 @@
-package Logic
+package entities
 
 type Note struct {
 	Id    int

@@ -1,9 +1,10 @@
-package Logic
+package service
 
 import (
+	"colabnote/internal/database"
+	"colabnote/internal/model/entities"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -15,17 +16,17 @@ var (
 	chars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" + "0123456789")
 )
 
-func (s *server) getNote(w http.ResponseWriter, r *http.Request) {
+func GetNote(w http.ResponseWriter, r *http.Request) {
 	token := r.Header["Token"][0]
 
-	rows, err := s.db.Query("SELECT `id`, `color`, `name`, `done`, `text`, `date` FROM `table1` WHERE `token` = ?", token)
+	rows, err := database.Database.Query("SELECT `id`, `color`, `name`, `done`, `text`, `date` FROM `table1` WHERE `token` = ?", token)
 	if err != nil {
 		log.Printf("while making query to db in %v error happened %v", r.URL, err)
 		return
 	}
-	list := []Note{}
+	list := []entities.Note{}
 	for rows.Next() {
-		item := Note{}
+		item := entities.Note{}
 		err = rows.Scan(&item.Id, &item.Color, &item.Name, &item.Done, &item.Text, &item.Date)
 		if err != nil {
 			log.Printf("while getting user in db by URL:%v error happened %v", r.URL, err)
@@ -44,9 +45,9 @@ func (s *server) getNote(w http.ResponseWriter, r *http.Request) {
 	rows.Close()
 }
 
-func (s *server) createNote(w http.ResponseWriter, r *http.Request) {
+func CreateNote(w http.ResponseWriter, r *http.Request) {
 	token := r.Header["Token"][0]
-	item := Note{}
+	item := entities.Note{}
 	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	err := json.Unmarshal(body, &item)
@@ -54,12 +55,12 @@ func (s *server) createNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, _ = s.db.Exec("INSERT INTO `table1` (`name`, `text`, `date`, `done`, `color`, `token`) VALUES (?, ?, ?, 0, ?, ?)", item.Name, item.Text, item.Date, item.Color, token)
+	_, _ = database.Database.Exec("INSERT INTO `table1` (`name`, `text`, `date`, `done`, `color`, `token`) VALUES (?, ?, ?, 0, ?, ?)", item.Name, item.Text, item.Date, item.Color, token)
 }
 
-func (s *server) deleteNoteById(w http.ResponseWriter, r *http.Request) {
+func DeleteNoteById(w http.ResponseWriter, r *http.Request) {
 	token := r.Header["Token"][0]
-	id := Note{}
+	id := entities.Note{}
 	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	err := json.Unmarshal(body, &id)
@@ -67,11 +68,11 @@ func (s *server) deleteNoteById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, _ = s.db.Exec("DELETE  FROM `table1` WHERE `id` = ? AND `token` = ?", id.Id, token)
+	_, _ = database.Database.Exec("DELETE  FROM `table1` WHERE `id` = ? AND `token` = ?", id.Id, token)
 }
 
-func (s *server) logIn(w http.ResponseWriter, r *http.Request) {
-	user := User{}
+func LogIn(w http.ResponseWriter, r *http.Request) {
+	user := entities.User{}
 	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	err := json.Unmarshal(body, &user)
@@ -79,13 +80,13 @@ func (s *server) logIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	rows, err := s.db.Query("SELECT token FROM appusers WHERE login = ? AND password =?", user.Login, user.Password)
+	rows, err := database.Database.Query("SELECT token FROM appusers WHERE login = ? AND password =?", user.Login, user.Password)
 	if err != nil {
 		log.Println(err)
 	}
 	defer rows.Close()
 	exists := true
-	login := Login{}
+	login := entities.Login{}
 	i := 0
 	for rows.Next() {
 		i++
@@ -102,9 +103,9 @@ func (s *server) logIn(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (s *server) register(w http.ResponseWriter, r *http.Request) {
+func Register(w http.ResponseWriter, r *http.Request) {
 	fmt.Print(1)
-	ruser := User{}
+	ruser := entities.User{}
 	token := ""
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &ruser)
@@ -113,13 +114,12 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	fmt.Print(5)
-	rows, _ := s.db.Query("SELECT `token` FROM appusers WHERE `login` = ? ", ruser.Login)
+	rows, _ := database.Database.Query("SELECT `token` FROM appusers WHERE `login` = ? ", ruser.Login)
 	exists := true
 	if rows.Next() == false {
 		exists = false
 	}
-	login := Login{Exists: exists, Token: ""}
+	login := entities.Login{Exists: exists, Token: ""}
 	fmt.Println(exists)
 	if exists == false {
 		for true {
@@ -129,33 +129,24 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 				b.WriteRune(chars[rand.Intn(n)])
 			}
 			token = b.String()
-			rows, _ := s.db.Query("SELECT * FROM appusers WHERE `login` = ? AND `token` = ?", ruser.Login, token)
+			rows, _ := database.Database.Query("SELECT * FROM appusers WHERE `login` = ? AND `token` = ?", ruser.Login, token)
 			if rows.Next() == false {
 				break
 			}
 		}
-		_, _ = s.db.Exec("INSERT INTO `appusers` (`login`, `password`, `token`) VALUES (?, ?, ?)", ruser.Login, ruser.Password, token)
+		_, _ = database.Database.Exec("INSERT INTO `appusers` (`login`, `password`, `token`) VALUES (?, ?, ?)", ruser.Login, ruser.Password, token)
 	}
 	login.Token = token
 	resp, _ := json.Marshal(&login)
 	w.Write(resp)
 	count := ""
-	rows, _ = s.db.Query("SELECT COUNT(*) FROM mysql.appusers")
+	rows, _ = database.Database.Query("SELECT COUNT(*) FROM mysql.appusers")
 	rows.Next()
 	rows.Scan(&count)
 	//	fmt.Println(h.websocket)
 }
-func (s *server) initHandler() {
-	adminMux := mux.NewRouter()
-	adminMux.HandleFunc("/api/getNote", s.getNote)
-	adminMux.HandleFunc("/api/createNote", s.createNote)
-	adminMux.HandleFunc("/api/deleteNoteById", s.deleteNoteById)
-	adminMux.HandleFunc("/api/logIn", s.logIn)
-	adminMux.HandleFunc("/api/register", s.register)
-	s.server.Handler = adminMux
-}
 
-/*func (s *server) usersOnline(writer http.ResponseWriter, request *http.Request) {
+/*func (s *Server) usersOnline(writer http.ResponseWriter, request *http.Request) {
 	conn, _ := upgrader.Upgrade(writer, request, nil)
 	s.websocket = conn
 	count := ""

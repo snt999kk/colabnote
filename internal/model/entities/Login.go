@@ -1,4 +1,4 @@
-package Logic
+package entities
 
 type Login struct {
 	Exists bool   `json:"exists, bool"`
