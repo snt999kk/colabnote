@@ -12,37 +12,18 @@ import (
 	"strings"
 )
 
-var (
-	chars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" + "0123456789")
-)
-
 func GetNote(w http.ResponseWriter, r *http.Request) {
 	token := r.Header["Token"][0]
 
-	rows, err := database.Database.Query("SELECT `id`, `color`, `name`, `done`, `text`, `date` FROM `table1` WHERE `token` = ?", token)
-	if err != nil {
-		log.Printf("while making query to db in %v error happened %v", r.URL, err)
-		return
-	}
-	list := []entities.Note{}
-	for rows.Next() {
-		item := entities.Note{}
-		err = rows.Scan(&item.Id, &item.Color, &item.Name, &item.Done, &item.Text, &item.Date)
-		if err != nil {
-			log.Printf("while getting user in db by URL:%v error happened %v", r.URL, err)
-			return
-		}
-		list = append(list, item)
-		//	fmt.Println("%v", item)
-	}
+	list, err := entities.NotesList(token)
 
 	resp, err := json.Marshal(list)
 	if err != nil {
 		log.Printf("While marshaling respose in db b URL:%v error happened %v", r.URL, err)
+		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Write(resp)
-	rows.Close()
 }
 
 func CreateNote(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +36,11 @@ func CreateNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, _ = database.Database.Exec("INSERT INTO `table1` (`name`, `text`, `date`, `done`, `color`, `token`) VALUES (?, ?, ?, 0, ?, ?)", item.Name, item.Text, item.Date, item.Color, token)
+	err = entities.CreateNote(token, item)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 }
 
 func DeleteNoteById(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +53,11 @@ func DeleteNoteById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, _ = database.Database.Exec("DELETE  FROM `table1` WHERE `id` = ? AND `token` = ?", id.Id, token)
+	err = entities.DeleteNoteById(token, id.Id)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 }
 
 func LogIn(w http.ResponseWriter, r *http.Request) {
@@ -80,26 +69,17 @@ func LogIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	rows, err := database.Database.Query("SELECT token FROM appusers WHERE login = ? AND password =?", user.Login, user.Password)
-	if err != nil {
-		log.Println(err)
-	}
-	defer rows.Close()
-	exists := true
 	login := entities.Login{}
-	i := 0
-	for rows.Next() {
-		i++
-		_ = rows.Scan(&user.Token)
-		fmt.Println(user.Token)
+	login.Exists, login.Token, err = entities.LogIn(user)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
 	}
-	if i == 0 {
-		exists = false
-		fmt.Println("No users found with given login and password")
+	resp, err := json.Marshal(login)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
 	}
-	login.Exists = exists
-	login.Token = user.Token
-	resp, _ := json.Marshal(login)
 	w.Write(resp)
 }
 
@@ -138,12 +118,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 	login.Token = token
 	resp, _ := json.Marshal(&login)
-	w.Write(resp)
 	count := ""
 	rows, _ = database.Database.Query("SELECT COUNT(*) FROM mysql.appusers")
 	rows.Next()
 	rows.Scan(&count)
-	//	fmt.Println(h.websocket)
+	w.Write(resp)
 }
 
 /*func (s *Server) usersOnline(writer http.ResponseWriter, request *http.Request) {
