@@ -16,7 +16,7 @@ type Server struct {
 func NewServer(conf config.Config, handler http.Handler) *Server {
 	return &Server{
 		server: http.Server{
-			Addr:    ":" + conf.Port,
+			Addr:    "localhost:" + conf.Port,
 			Handler: handler,
 		},
 	}
@@ -27,11 +27,12 @@ func (s *Server) Run() error {
 		log.Println(err)
 	}
 	defer database.Database.Close()
-	logger.Info("server started at port " + config.Conf.Port)
 	err = s.server.ListenAndServe()
 	if err != nil {
+		logger.Log(err)
 		return err
 	}
+	logger.Info("server started at port " + config.Conf.Port)
 	return nil
 }
 func (s *Server) Shutdown(ctx context.Context) {

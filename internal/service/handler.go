@@ -1,15 +1,12 @@
 package service
 
 import (
-	"colabnote/internal/database"
+	"colabnote/internal/logger"
 	"colabnote/internal/model/entities"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
-	"strings"
 )
 
 func GetNote(w http.ResponseWriter, r *http.Request) {
@@ -84,44 +81,24 @@ func LogIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	fmt.Print(1)
-	ruser := entities.User{}
-	token := ""
+	regUser := entities.User{}
 	body, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(body, &ruser)
+	err := json.Unmarshal(body, &regUser)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	rows, _ := database.Database.Query("SELECT `token` FROM appusers WHERE `login` = ? ", ruser.Login)
-	exists := true
-	if rows.Next() == false {
-		exists = false
+	regUser, err = entities.RegisterUser(regUser)
+	if err != nil {
+		logger.Log(err)
+		return
 	}
-	login := entities.Login{Exists: exists, Token: ""}
-	fmt.Println(exists)
-	if exists == false {
-		for true {
-			var b strings.Builder
-			n := len(chars)
-			for i := 0; i < 20; i++ {
-				b.WriteRune(chars[rand.Intn(n)])
-			}
-			token = b.String()
-			rows, _ := database.Database.Query("SELECT * FROM appusers WHERE `login` = ? AND `token` = ?", ruser.Login, token)
-			if rows.Next() == false {
-				break
-			}
-		}
-		_, _ = database.Database.Exec("INSERT INTO `appusers` (`login`, `password`, `token`) VALUES (?, ?, ?)", ruser.Login, ruser.Password, token)
+	resp, err := json.Marshal(regUser)
+	if err != nil {
+		logger.Log(err)
+		return
 	}
-	login.Token = token
-	resp, _ := json.Marshal(&login)
-	count := ""
-	rows, _ = database.Database.Query("SELECT COUNT(*) FROM mysql.appusers")
-	rows.Next()
-	rows.Scan(&count)
 	w.Write(resp)
 }
 
