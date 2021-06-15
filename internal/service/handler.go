@@ -86,17 +86,20 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	err := json.Unmarshal(body, &regUser)
 	defer r.Body.Close()
 	if err != nil {
+		logger.Log(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	regUser, err = entities.RegisterUser(regUser)
 	if err != nil {
 		logger.Log(err)
+		http.Error(w, err.Error(), 500)
 		return
 	}
 	resp, err := json.Marshal(regUser)
 	if err != nil {
 		logger.Log(err)
+		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Write(resp)

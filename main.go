@@ -24,8 +24,6 @@ func init() {
 	flag.StringVar(&configPath, "-configpath", "configs/conf.json", "path config file")
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetOutput(os.Stdout)
-	logrus.SetLevel(logrus.ErrorLevel)
-	logrus.SetLevel(logrus.InfoLevel)
 }
 func main() {
 	flag.Parse()
@@ -51,6 +49,9 @@ func main() {
 		}
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
+	if err != nil {
+		cancel()
+	}
 	go func(cancel context.CancelFunc) {
 		sign := make(chan os.Signal)
 		signal.Notify(sign, os.Interrupt)
