@@ -38,10 +38,11 @@ func main() {
 		logger.Log(err)
 	}
 	adminMux := mux.NewRouter()
+	adminMux.HandleFunc("/api/test", service.Test)
 	adminMux.HandleFunc("/api/getNote", service.GetNote).Methods("GET")
 	adminMux.HandleFunc("/api/createNote", service.CreateNote).Methods("POST")
 	adminMux.HandleFunc("/api/deleteNoteById", service.DeleteNoteById).Methods("DELETE")
-	adminMux.HandleFunc("/api/logIn", service.LogIn).Methods("POST")
+	adminMux.HandleFunc("/api`/logIn", service.LogIn).Methods("POST")
 	adminMux.HandleFunc("/api/register", service.Register).Methods("POST")
 	myServer := entities.NewServer(config.Conf, adminMux)
 	go func() {

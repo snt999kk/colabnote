@@ -2,6 +2,7 @@ package service
 
 import (
 	"colabnote/internal/database"
+	"colabnote/internal/logger"
 	"colabnote/internal/model/entities"
 	"encoding/json"
 	"fmt"
@@ -19,7 +20,7 @@ var (
 func GetNote(w http.ResponseWriter, r *http.Request) {
 	token := r.Header["Token"][0]
 
-	rows, err := database.Database.Query("SELECT `id`, `color`, `name`, `done`, `text`, `date` FROM `table1` WHERE `token` = ?", token)
+	rows, err := database.Database.Query("SELECT id, color, name, done, text, date FROM table1 WHERE token = ?", token)
 	if err != nil {
 		log.Printf("while making query to db in %v error happened %v", r.URL, err)
 		return
@@ -55,7 +56,7 @@ func CreateNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, _ = database.Database.Exec("INSERT INTO `table1` (`name`, `text`, `date`, `done`, `color`, `token`) VALUES (?, ?, ?, 0, ?, ?)", item.Name, item.Text, item.Date, item.Color, token)
+	_, _ = database.Database.Exec("INSERT INTO table1 (name, text, date, done, color, token) VALUES (?, ?, ?, 0, ?, ?)", item.Name, item.Text, item.Date, item.Color, token)
 }
 
 func DeleteNoteById(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +69,7 @@ func DeleteNoteById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, _ = database.Database.Exec("DELETE  FROM `table1` WHERE `id` = ? AND `token` = ?", id.Id, token)
+	_, _ = database.Database.Exec("DELETE  FROM table1 WHERE id = ? AND token = ?", id.Id, token)
 }
 
 func LogIn(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +105,6 @@ func LogIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	fmt.Print(1)
 	ruser := entities.User{}
 	token := ""
 	body, _ := ioutil.ReadAll(r.Body)
@@ -114,7 +114,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	rows, _ := database.Database.Query("SELECT `token` FROM appusers WHERE `login` = ? ", ruser.Login)
+	rows, _ := database.Database.Query("SELECT token FROM appusers WHERE login = ? ", ruser.Login)
 	exists := true
 	if rows.Next() == false {
 		exists = false
@@ -129,12 +129,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				b.WriteRune(chars[rand.Intn(n)])
 			}
 			token = b.String()
-			rows, _ := database.Database.Query("SELECT * FROM appusers WHERE `login` = ? AND `token` = ?", ruser.Login, token)
+			rows, _ := database.Database.Query("SELECT * FROM appusers WHERE login = ? AND token = ?", ruser.Login, token)
 			if rows.Next() == false {
 				break
 			}
 		}
-		_, _ = database.Database.Exec("INSERT INTO `appusers` (`login`, `password`, `token`) VALUES (?, ?, ?)", ruser.Login, ruser.Password, token)
+		_, _ = database.Database.Exec("INSERT INTO appusers (login, password, token) VALUES (?, ?, ?)", ruser.Login, ruser.Password, token)
 	}
 	login.Token = token
 	resp, _ := json.Marshal(&login)
@@ -144,6 +144,24 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	rows.Next()
 	rows.Scan(&count)
 	//	fmt.Println(h.websocket)
+}
+
+type Req struct {
+	Field int `json:"field"`
+}
+
+func Test(w http.ResponseWriter, r *http.Request) {
+	res, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Log(err)
+		w.Write([]byte(err.Error()))
+	}
+	req := Req{}
+	err = json.Unmarshal(res, &req)
+	if err != nil {
+		logger.Log(err)
+		w.Write([]byte(err.Error()))
+	}
 }
 
 /*func (s *Server) usersOnline(writer http.ResponseWriter, request *http.Request) {

@@ -3,7 +3,7 @@ package logger
 import "github.com/sirupsen/logrus"
 
 func Log(err error) {
-	logrus.WithField("error", err)
+	logrus.Error(err)
 }
 func Info(info string) {
 	logrus.Info(info)
